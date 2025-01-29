@@ -1,42 +1,64 @@
 document.addEventListener("DOMContentLoaded", function() {
-    const habits = ["read", "workout", "meditate"];
+    const habitContainer = document.getElementById("habit-container");
+    const resetButton = document.getElementById("reset-btn");
+    const addHabitButton = document.getElementById("add-habit-btn");
 
-    habits.forEach(habit => {
-        const checkBox = document.getElementById(`${habit}-check`);
-        const streakElement = document.getElementById(`${habit}-streak`);
+    function loadHabits() {
+        habitContainer.innerHTML = "";
+        const habits = JSON.parse(localStorage.getItem("habits")) || [];
+        habits.forEach(habit => addHabitToDOM(habit.title, habit.emoji, habit.streak));
+    }
 
-        let streak = localStorage.getItem(`${habit}-streak`) || 0;
-        streakElement.textContent = streak;
+    function saveHabits() {
+        const habits = Array.from(document.querySelectorAll(".habit"))
+            .map(habit => ({
+                title: habit.dataset.title,
+                emoji: habit.dataset.emoji,
+                streak: habit.querySelector(".streak").textContent
+            }));
+        localStorage.setItem("habits", JSON.stringify(habits));
+    }
 
-        checkBox.addEventListener("change", function() {
-            if (checkBox.checked) {
-                streak++;
+    function addHabitToDOM(title, emoji, streak = 0) {
+        const habitDiv = document.createElement("div");
+        habitDiv.classList.add("habit");
+        habitDiv.dataset.title = title;
+        habitDiv.dataset.emoji = emoji;
+        habitDiv.innerHTML = `
+            <h2>${title} ${emoji}</h2>
+            <p>Streak: <span class="streak">${streak}</span></p>
+            <input type="checkbox">
+        `;
+        
+        const checkbox = habitDiv.querySelector("input[type='checkbox']");
+        const streakElement = habitDiv.querySelector(".streak");
+        checkbox.addEventListener("change", function() {
+            let count = parseInt(streakElement.textContent);
+            if (checkbox.checked) {
+                count++;
+                habitDiv.classList.add("completed");
             } else {
-                streak = 0;
+                count = Math.max(0, count - 1);
+                habitDiv.classList.remove("completed");
             }
-            streakElement.textContent = streak;
-            localStorage.setItem(`${habit}-streak`, streak);
+            streakElement.textContent = count;
+            saveHabits();
         });
+        
+        habitContainer.appendChild(habitDiv);
+        saveHabits();
+    }
+
+    addHabitButton.addEventListener("click", function() {
+        const title = prompt("Enter the new habit title:");
+        const emoji = prompt("Enter an emoji for this habit:");
+        if (title && emoji) addHabitToDOM(title, emoji);
     });
 
-    document.getElementById("reset-btn").addEventListener("click", function() {
-        habits.forEach(habit => {
-            localStorage.setItem(`${habit}-streak`, 0);
-            document.getElementById(`${habit}-streak`).textContent = 0;
-        });
+    resetButton.addEventListener("click", function() {
+        localStorage.removeItem("habits");
+        loadHabits();
     });
 
-    document.getElementById("add-habit-btn").addEventListener("click", function() {
-        const habitTitle = prompt("Enter the new habit title:");
-        if (habitTitle) {
-            const newHabit = document.createElement("div");
-            newHabit.classList.add("habit");
-            newHabit.innerHTML = `
-                <h2>${habitTitle}</h2>
-                <p>Streak: <span class="streak">0</span></p>
-                <input type="checkbox">
-            `;
-            document.getElementById("habit-container").appendChild(newHabit);
-        }
-    });
+    loadHabits();
 });
