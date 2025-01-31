@@ -1,10 +1,11 @@
 document.addEventListener("DOMContentLoaded", function() {
     const habitContainer = document.getElementById("habit-container");
-    const storedHabits = JSON.parse(localStorage.getItem("habits")) || [
-        { id: "read", title: "Read", emoji: "📚", streak: 0, lastChecked: "" },
-        { id: "workout", title: "Workout", emoji: "💪", streak: 0, lastChecked: "" },
-        { id: "meditate", title: "Meditate", emoji: "☁️", streak: 0, lastChecked: "" }
+    const defaultHabits = [
+        { id: "read", title: "Read", emoji: "📚", streak: 0, completed: false },
+        { id: "workout", title: "Workout", emoji: "💪", streak: 0, completed: false },
+        { id: "meditate", title: "Meditate", emoji: "☁️", streak: 0, completed: false }
     ];
+    let storedHabits = JSON.parse(localStorage.getItem("habits")) || defaultHabits;
 
     function renderHabits() {
         habitContainer.innerHTML = "";
@@ -16,22 +17,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
             habitDiv.innerHTML = `
                 <h2>${habit.title} ${habit.emoji}</h2>
-                <p>Streak: <span class="streak">${habit.streak}</span></p>
-                <input type="checkbox" ${habit.completed ? "checked" : ""}>
+                <p class="streak">Streak: <span>${habit.streak}</span></p>
+                <input type="checkbox" ${habit.completed ? "checked disabled" : ""}>
             `;
 
             const checkbox = habitDiv.querySelector("input");
-            const streakElement = habitDiv.querySelector(".streak");
+            const streakElement = habitDiv.querySelector(".streak span");
             checkbox.addEventListener("change", function() {
-                const today = new Date().toDateString();
                 if (checkbox.checked) {
-                    if (habit.lastChecked !== today) {
-                        habit.streak++;
-                        habit.lastChecked = today;
-                    }
+                    habit.streak++;
                     habit.completed = true;
-                } else {
-                    habit.completed = false;
+                    checkbox.disabled = true;
                 }
                 streakElement.textContent = habit.streak;
                 habitDiv.classList.toggle("completed", habit.completed);
@@ -42,10 +38,8 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    renderHabits();
-
     document.getElementById("reset-btn").addEventListener("click", function() {
-        localStorage.removeItem("habits");
+        localStorage.setItem("habits", JSON.stringify(defaultHabits));
         location.reload();
     });
 
@@ -59,4 +53,5 @@ document.addEventListener("DOMContentLoaded", function() {
             renderHabits();
         }
     });
+    renderHabits();
 });
