@@ -1,84 +1,124 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     const habitContainer = document.getElementById("habit-container");
-    const defaultHabits = [
+    const resetButton = document.getElementById("reset-btn");
+    const addHabitButton = document.getElementById("add-habit-btn");
+
+    const DEFAULT_HABITS = [
         { id: "read", title: "Read", emoji: "📚", streak: 0, lastChecked: "" },
         { id: "workout", title: "Workout", emoji: "💪", streak: 0, lastChecked: "" },
         { id: "meditate", title: "Meditate", emoji: "☁️", streak: 0, lastChecked: "" }
     ];
-    let storedHabits = JSON.parse(localStorage.getItem("habits")) || defaultHabits;
 
-    function checkMissedDays() {
-        const today = new Date();
-        const todayStr = today.toISOString().split("T")[0]; // Get YYYY-MM-DD
-    
-        storedHabits.forEach(habit => {
-            if (habit.lastChecked && habit.lastChecked !== todayStr) {
-                const lastCheckedDate = new Date(habit.lastChecked);
-                const difference = (today - lastCheckedDate) / (1000 * 60 * 60 * 24);
-    
-                if (difference >= 2) {
-                    habit.streak = 0; // Reset streak if 2 or more days are missed
-                }
-            }
-            habit.lastChecked = todayStr; // Update lastChecked to today
-        });
-    
-        localStorage.setItem("habits", JSON.stringify(storedHabits));
-    }
-    
-
-    function renderHabits() {
+    function loadHabits() {
         habitContainer.innerHTML = "";
-        storedHabits.forEach((habit, index) => {
-            const today = new Date().toDateString();
-            const habitDiv = document.createElement("div");
-            habitDiv.classList.add("habit");
-            habitDiv.innerHTML = `
-                <h2>${habit.title} ${habit.emoji}</h2>
-                <p class="streak">Streak: <span>${habit.streak}</span></p>
-                <input type="checkbox" ${habit.lastChecked === today ? "checked disabled" : ""}>
-                <button class="delete-btn" data-index="${index}">&#128465;</button>
-            `;
-            const checkbox = habitDiv.querySelector("input");
-            const streakElement = habitDiv.querySelector(".streak span");
-            checkbox.addEventListener("change", function() {
-                if (checkbox.checked) {
-                    habit.streak++;
-                    habit.completed = true;
-                    checkbox.disabled = true;
-                }
-                streakElement.textContent = habit.streak;
-                habitDiv.classList.toggle("completed", habit.completed);
-                localStorage.setItem("habits", JSON.stringify(storedHabits));
-            });
-            
-            habitContainer.appendChild(habitDiv);
+        let habits = JSON.parse(localStorage.getItem("habits"));
 
-            habitDiv.querySelector(".delete-btn").addEventListener("click", function() {
-                if (confirm("Do you want to delete this habit?")) {
-                    storedHabits.splice(index, 1);
-                    localStorage.setItem("habits", JSON.stringify(storedHabits));
-                    renderHabits();
-                }
-            });
-        });
+        if (!habits || habits.length === 0) {
+            // If no habits exist, set defaults
+            habits = DEFAULT_HABITS;
+            localStorage.setItem("habits", JSON.stringify(habits));
+        }
+
+        habits.forEach(habit => addHabitToDOM(habit.title, habit.emoji, habit.streak, habit.lastChecked, habit.checked));
     }
 
-    document.getElementById("reset-btn").addEventListener("click", function() {
-        localStorage.removeItem("habits");
-        location.reload();
-    });
+    function saveHabits() {
+        const habits = Array.from(document.querySelectorAll(".habit")).map(habit => ({
+            title: habit.dataset.title,
+            emoji: habit.dataset.emoji,
+            streak: habit.querySelector(".streak").textContent,
+            lastChecked: habit.dataset.lastChecked || "",
+            checked: habit.querySelector("input[type='checkbox']").checked
+        }));
+        localStorage.setItem("habits", JSON.stringify(habits));
+    }
 
-    document.getElementById("add-habit-btn").addEventListener("click", function() {
+    function addHabitToDOM(title, emoji, streak = 0, lastChecked = "", checked = false) {
+        const habitDiv = document.createElement("div");
+        habitDiv.classList.add("habit");
+        habitDiv.dataset.title = title;
+        habitDiv.dataset.emoji = emoji;
+        habitDiv.dataset.lastChecked = lastChecked;
+    
+        habitDiv.innerHTML = `
+            <button class="delete-btn">❌</button>
+            <h2>${title} ${emoji}</h2>
+            <p>Streak: <span class="streak">${streak}</span></p>
+            <input type="checkbox">
+        `;
+    
+        const checkbox = habitDiv.querySelector("input[type='checkbox']");
+        const streakElement = habitDiv.querySelector(".streak");
+        const removeButton = habitDiv.querySelector(".delete-btn");
+    
+        // Load checkbox state
+        checkbox.checked = checked;
+        if (checked) {
+            habitDiv.classList.add("completed");
+        }
+    
+        checkbox.addEventListener("change", function () {
+            updateStreak(habitDiv, checkbox, streakElement);
+        });
+    
+        removeButton.addEventListener("click", function () {
+            removeHabit(habitDiv);
+        });
+    
+        habitContainer.appendChild(habitDiv);
+        saveHabits();
+    }    
+
+    function updateStreak(habitDiv, checkbox, streakElement) {
+        let count = parseInt(streakElement.textContent);
+        const today = new Date().toDateString();
+        const lastChecked = habitDiv.dataset.lastChecked;
+
+        if (checkbox.checked) {
+            habitDiv.classList.add("completed");
+
+            if (lastChecked !== today) {
+                count++;
+                habitDiv.dataset.lastChecked = today;
+            }
+        } else {
+            habitDiv.classList.remove("completed");
+        }
+
+        streakElement.textContent = count;
+        saveHabits();
+    }
+
+    function removeHabit(habitDiv) {
+        habitDiv.remove();
+        saveHabits();
+    }
+
+    function validateInput(title, emoji) {
+        if (!title.trim()) {
+            alert("Habit title cannot be empty!");
+            return false;
+        }
+        if (!/^\p{Emoji}$/u.test(emoji)) {
+            alert("Please enter a valid emoji!");
+            return false;
+        }
+        return true;
+    }
+
+    addHabitButton.addEventListener("click", function () {
         const title = prompt("Enter the new habit title:");
         const emoji = prompt("Enter an emoji for this habit:");
-        if (title && emoji) {
-            storedHabits.push({ id: title.toLowerCase().replace(/\s+/g, "-"), title, emoji, streak: 0, lastChecked: "" });
-            localStorage.setItem("habits", JSON.stringify(storedHabits));
-            renderHabits();
+        if (validateInput(title, emoji)) {
+            addHabitToDOM(title, emoji);
         }
     });
 
-    checkMissedDays();
-    renderHabits();
+    resetButton.addEventListener("click", function () {
+        localStorage.removeItem("habits");
+        loadHabits();
+    });
+
+    loadHabits();
 });
+

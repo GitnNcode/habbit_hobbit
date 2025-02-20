@@ -113,8 +113,13 @@ input[type="checkbox"]:disabled {
     right: 10px;
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 22px;
     cursor: pointer;
+    color: #d9534f;
+}
+
+.delete-btn:hover {
+    color: #c9302c;
 }
 
 #reset-btn, #add-habit-btn {
